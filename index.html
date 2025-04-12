@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat en Temps Réel</title>
+  <style>
+    body {
+      background-color: #181818;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 10px;
+      background-color: #222;
+    }
+    .messages {
+      height: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #333;
+      border-radius: 5px;
+      color: #ccc;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+    }
+    input {
+      width: 80%;
+    }
+    button {
+      width: 15%;
+      background-color: #444;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Chat en Temps Réel</h1>
+    <input id="username" type="text" placeholder="Nom d'utilisateur" />
+    <input id="roomCode" type="text" placeholder="Code de Room (ou en générer un)" />
+    <button id="joinButton">Rejoindre la Room</button>
+
+    <div class="messages" id="messages"></div>
+
+    <input id="messageInput" type="text" placeholder="Tape ton message..." />
+    <button id="sendMessageButton">Envoyer</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1-crypto-js.js"></script>
+  <script>
+    const socket = io();
+    let currentRoom = '';
+    let username = '';
+    const secretKey = 'votre-cle-secrete'; // La même clé secrète que côté serveur
+
+    document.getElementById('joinButton').onclick = () => {
+      username = document.getElementById('username').value;
+      currentRoom = document.getElementById('roomCode').value || Math.random().toString(36).substring(2, 8);
+
+      socket.emit('joinRoom', currentRoom);
+
+      // Afficher l'historique des messages
+      socket.on('history', (history) => {
+        const messagesDiv = document.getElementById('messages');
+        messagesDiv.innerHTML = history.map(msg => {
+          // Décrypter chaque message avant de l'afficher
+          const bytes = CryptoJS.AES.decrypt(msg, secretKey);
+          const decryptedMessage = bytes.toString(CryptoJS.enc.Utf8);
+          return `<p>${decryptedMessage}</p>`;
+        }).join('');
+      });
+    };
+
+    document.getElementById('sendMessageButton').onclick = () => {
+      const message = document.getElementById('messageInput').value;
+      socket.emit('message', `${username}: ${message}`, currentRoom);
+    };
+
+    // Recevoir un message et le décrypter
+    socket.on('message', (encryptedMsg) => {
+      const bytes = CryptoJS.AES.decrypt(encryptedMsg, secretKey);
+      const decryptedMessage = bytes.toString(CryptoJS.enc.Utf8);
+      const messagesDiv = document.getElementById('messages');
+      messagesDiv.innerHTML += `<p>${decryptedMessage}</p>`;
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+  </script>
+</body>
+</html>
