@@ -9,7 +9,7 @@ const { encrypt, decrypt } = require("./utils/encryption");
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: "*" }
+  cors: { origin: "*" } // Permet à toutes les origines de se connecter
 });
 
 app.use(cors());
@@ -52,17 +52,18 @@ io.on("connection", socket => {
   });
 
   socket.on("sendMessage", ({ roomKey, username, content }) => {
-    const encryptedMessage = encrypt(content);
+    const encryptedMessage = encrypt(content); // Encrypting the message
     const message = {
       username,
       content: encryptedMessage,
       timestamp: new Date().toISOString()
     };
-    saveRoomMessage(roomKey, message);
-    io.to(roomKey).emit("newMessage", message);
+    saveRoomMessage(roomKey, message); // Save the message to file
+    io.to(roomKey).emit("newMessage", message); // Emit the message to other users in the room
   });
 });
 
+// Server start
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log("Server running on port", PORT);
